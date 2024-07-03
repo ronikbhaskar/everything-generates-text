@@ -11,8 +11,8 @@ def preprocess_text(input_file, output_file):
     # Replace line breaks with spaces
     text = text.replace('\n', ' ')
     
-    # Replace non-standard characters with standard characters
-    text = re.sub(r'[^a-zA-Z0-9\s]', '', text)
+    # Replace non-standard characters with standard characters, keep punctuation
+    text = re.sub(r'[^a-zA-Z0-9\s.,!?;:()\'"-]', '', text)
     
     # Optional: Remove extra spaces
     text = re.sub(r'\s+', ' ', text).strip()

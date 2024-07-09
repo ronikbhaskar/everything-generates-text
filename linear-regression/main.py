@@ -81,7 +81,7 @@ def main():
     encoder, X, Y = tokenize(text, tuple_length=tuple_len, token_length=token_len)
     model = RidgeRegression()
     model.fit(X, Y, regularizer)
-    print(generate(model, encoder, encoder.get_seed(token_len), num_generated_tokens, do_softmax=do_softmax, separator=" "))
+    print(generate(model, encoder, encoder.get_seed(token_len), num_generated_tokens, do_softmax=do_softmax, separator=separator))
 
 if __name__ == "__main__":
     main()

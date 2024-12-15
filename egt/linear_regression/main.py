@@ -1,38 +1,9 @@
 
 
 from linear_regression import LinearRegression, RidgeRegression
-from encoder import OneHotEncoder
+from egt.utils.one_hot_encoder import tokenize
 
 import numpy as np
-
-def tokenize(text, tuple_length=3, token_length=2):
-    X = []
-    Y = []
-    tuples = []
-    bias_term = np.array([1])
-
-    if type(text) == list:
-        tuples = [text[i:] for i in range(tuple_length)]
-    else:
-        for i in range(tuple_length):
-            tuples.append([text[j:j+tuple_length] for j in range(i, len(text) - 1, tuple_length)])
-
-    encoder = OneHotEncoder(sum(tuples, []), suffix=bias_term)
-
-    for tuple_group in tuples:
-        text_length = len(tuple_group)
-
-        features = []
-        labels = []
-
-        for i in range(text_length - token_length):
-            features.append(encoder.encode_cat(tuple_group[i:i+token_length], do_suffix=True))
-            labels.append(encoder.encode(tuple_group[i + token_length]))
-
-        X += features
-        Y += labels
-
-    return encoder, np.array(X), np.array(Y)
 
 def softmax(x):
     """

@@ -1,9 +1,8 @@
 
 import numpy as np
-import random
-from collections import Counter
 
-from mcnf import MCNF
+from egt.utils.formula import MCNF
+from egt.utils.probability import make_distribution, entropy
 
 class Node:
 
@@ -24,20 +23,7 @@ class Node:
         self.probs = probs
 
     def is_leaf_node(self):
-        return self.values is not None
-
-def _make_distribution(y):
-    total = len(y)
-    counter = Counter(y) 
-    counts = counter.most_common()
-    # first is values, second is probabilites
-    return \
-        np.array([pair[0] for pair in counts]), \
-        np.array([pair[1] / total for pair in counts]) 
-
-def _entropy(y):
-    probabilities = _make_distribution(y)[1].astype(np.float16)
-    return -np.sum(probabilities * np.log2(probabilities))
+        return self.values is not None 
     
 class DecisionTree:
 
@@ -60,14 +46,14 @@ class DecisionTree:
 
         # check the stopping criteria
         if depth >= self.max_depth or n_labels == 1 or n_unique_samples == 1 or n_samples < self.min_samples_split:
-            leaf_values, leaf_probs = _make_distribution(y)
+            leaf_values, leaf_probs = make_distribution(y)
             return Node(values=leaf_values, probs=leaf_probs)
 
         # find the best formula
         best_formula, best_threshold = self._greedy_best_formula(X, y)
 
         if best_threshold == None:
-            leaf_values, leaf_probs = _make_distribution(y)
+            leaf_values, leaf_probs = make_distribution(y)
             return Node(values=leaf_values, probs=leaf_probs)
 
         # create child nodes
@@ -84,7 +70,7 @@ class DecisionTree:
         not provably optimal, but certainly faster than full search
         """
 
-        base_entropy = _entropy(y)
+        base_entropy = entropy(y)
         num_samples = len(y)
 
         best_formula, best_threshold = MCNF(X.shape[1]), None
@@ -118,7 +104,7 @@ class DecisionTree:
                         if num_left == 0 or num_right == 0:
                             info_gain = 0
                         else:
-                            info_gain = base_entropy - (num_left * _entropy(y[left_idxs]) + num_right * _entropy(y[right_idxs])) / num_samples
+                            info_gain = base_entropy - (num_left * entropy(y[left_idxs]) + num_right * entropy(y[right_idxs])) / num_samples
 
                         if info_gain > temp_best_info_gain:
                             temp_best_info_gain = info_gain
@@ -157,14 +143,17 @@ class DecisionTree:
 
         return split_idx, split_threshold
 
-    def predict(self, x):
-        return self._traverse_tree(x, self.root)
+    def predict(self, x, get_conf=False):
+        return self._traverse_tree(x, self.root, get_conf=get_conf)
 
-    def _traverse_tree(self, x, node: Node):
+    def _traverse_tree(self, x, node: Node, get_conf=False):
         if node.is_leaf_node():
+            if get_conf:
+                idx = np.random.choice(len(node.values), size=1, p=node.probs)[0]
+                return node.values[idx], node.probs[idx]
             return np.random.choice(node.values, size=1, p=node.probs)[0]
         
         if node.mcnf.evaluate(x) <= node.threshold:
-            return self._traverse_tree(x, node.left)
+            return self._traverse_tree(x, node.left, get_conf=get_conf)
         
-        return self._traverse_tree(x, node.right)
+        return self._traverse_tree(x, node.right, get_conf=get_conf)

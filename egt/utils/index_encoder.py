@@ -14,3 +14,16 @@ class IndexEncoder:
     
     def decode(self, x):
         return self.idx_to_obj[x]
+    
+def generate(model, encoder, seed=None, num_tokens=100, separator= " "):
+    if seed == None:
+        seed = 0
+
+    output = encoder.decode(seed)
+    curr_token = seed
+    
+    for _ in range(num_tokens):
+        curr_token = model.predict(curr_token)
+        output += separator + encoder.decode(curr_token)
+
+    return output

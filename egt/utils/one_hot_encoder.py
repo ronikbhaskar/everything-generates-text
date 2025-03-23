@@ -1,6 +1,7 @@
 
 
 import numpy as np
+import re
 
 class OneHotEncoder:
 
@@ -13,6 +14,7 @@ class OneHotEncoder:
         self.length = len(self.collection)
         self.idx_to_obj = list(self.collection)
         self.obj_to_idx = {obj:i for i, obj in enumerate(self.idx_to_obj)}
+        self.idxs = np.array(list(self.obj_to_idx.values()))
         if suffix:
             self.suffix = suffix
         else:
@@ -48,23 +50,26 @@ class OneHotEncoder:
 
         return self.idx_to_obj[idx]
     
-    def get_seed(self, length):
+    def sample_from_probs(self, probs):
+        """
+        samples and returns object using probabilities as weights
+        """
+
+        return self.decode(np.random.choice(self.idxs, p=probs))
+    
+    def get_seed(self, idx=0):
         """
         """
 
-        return self.idx_to_obj[:length]
+        return self.idx_to_obj[idx]
     
-def tokenize(text, tuple_length=3, token_length=2):
+def embed(text, tuple_length=1):
     X = []
     Y = []
     tuples = []
     bias_term = np.array([1])
 
-    if type(text) == list:
-        tuples = [text[i:] for i in range(tuple_length)]
-    else:
-        for i in range(tuple_length):
-            tuples.append([text[j:j+tuple_length] for j in range(i, len(text) - 1, tuple_length)])
+    tuples = [text[i:] for i in range(tuple_length)]
 
     encoder = OneHotEncoder(sum(tuples, []), suffix=bias_term)
 
@@ -74,11 +79,63 @@ def tokenize(text, tuple_length=3, token_length=2):
         features = []
         labels = []
 
-        for i in range(text_length - token_length):
-            features.append(encoder.encode_cat(tuple_group[i:i+token_length], do_suffix=True))
-            labels.append(encoder.encode(tuple_group[i + token_length]))
+        for i in range(text_length - 1):
+            features.append(encoder.encode_cat(tuple_group[i:i+1], do_suffix=True))
+            labels.append(encoder.encode(tuple_group[i + 1]))
 
         X += features
         Y += labels
 
     return encoder, np.array(X), np.array(Y)
+
+def generate(model, encoder, seed=None, length=100, separator=" ", do_suffix=False):
+    if seed == None:
+        seed = encoder.get_seed()
+    
+    output = seed.capitalize()
+    current_str = seed
+
+    was_period = current_str == ".";
+
+    for _ in range(length):
+        x_t = encoder.encode(current_str, do_suffix=do_suffix)
+        y = model.predict(x_t)
+        if isinstance(y, np.ndarray):
+            next_token = encoder.sample_from_probs(y)
+        else:
+            next_token = y
+
+        if not (next_token == "." or next_token == ","):
+            output += separator
+
+        if was_period:
+            output += next_token.capitalize()
+        else:
+            output += next_token
+
+        current_str = next_token
+        was_period = current_str == ".";
+    
+    return output
+
+def tokenize(text):
+    """Tokenize, as back-translated from my markov site."""
+    # End of sentence punctuation
+    text = re.sub(r'[\.\?!;]+', ' . ', text)
+    # End of phrase punctuation
+    text = re.sub(r'--|[,:()]+', ' , ', text)
+    # Remove quotes
+    text = re.sub(r'"', '', text)
+    text = re.sub(r'( \')|(\' )', '', text)
+    # Convert to lowercase
+    text = text.lower()
+    # Remove excess spaces
+    text = re.sub(r'[ \t\n]+', ' ', text)
+    # Capitalization of 'I'
+    text = re.sub(r' i ', ' I ', text)
+    text = re.sub(r' i\'', ' I\'', text)
+    
+    # Tokenize by splitting on spaces and filter out empty tokens
+    text_list = [word for word in text.split(' ') if word]
+    
+    return text_list

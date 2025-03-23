@@ -48,4 +48,7 @@ class LogisticRegression:
         Y = sigmoid(x @ W)
         """
 
-        return 1 / (1 + np.exp(-x @ self.W))
+        y = 1 / (1 + np.exp(-x @ self.W))
+        y = y - np.min(y)
+        y *= 10 / np.max(y)
+        return y / y.sum() # probability vector

@@ -30,9 +30,14 @@ class LinearRegression:
     def predict(self, x):
         """
         simple linear operation
+        sike, I have to revamp this to do a weighted selection of the next token
+        so I can create a universal generate function for the OneHotEncoder
         """
 
-        return x @ self.W
+        y = x @ self.W
+        y = y - np.min(y)
+        y *= 10 / np.max(y)
+        return y / y.sum() # probability vector
     
 class RidgeRegression(LinearRegression):
     """
